@@ -1,0 +1,8 @@
+[package]
+name = "maia"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+colored = "3.0.0"
+reqwest = { version = "0.10.0-alpha.2", features = ["blocking"] }

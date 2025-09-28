@@ -3,8 +3,9 @@ MAIA is commandline installation application with a similar syntax to Apt. It is
 *Excluding repositories in the [Limitations section](https://github.com/milorad-co/maia#Limitations).
 # How to Install
 Note that MAIA is compatible only with Debian-based GNU/Linux.
-1. Download MAIA from one of our releases.
-2. Execute it from the commandline (if you are trying to use a commandline installation application we would hope that you know how to do that) *as root* with the argument `setup` (e.g. `sudo ./maia setup`). It will then install itself into your `/usr/bin` directory and allow you to use it as if it were a command.
+1. Install cURL with `sudo apt install curl`.
+2. Download MAIA from one of our releases.
+3. Execute it from the commandline (if you are trying to use a commandline installation application we would hope that you know how to do that) *as root* with the argument `setup` (e.g. `sudo ./maia setup`). It will then install itself into your `/usr/bin` directory and allow you to use it as if it were a command.
 # How to Use
 As mentioned earlier, MAIA has a syntax very similar to Apt's syntax. **There are differences**, however, and some may simply not use Apt, so we have added this documentation. (Note that you can access similar documentation via the application by running `maia help`).
 ## Syntax
@@ -26,3 +27,9 @@ Remove removes applications and any configuration data that MAIA created for the
 2. MAIA requires for the repository to have at least one release.
 3. The repository must have a release marked as latest.
 4. The latest release must have at least one non-source-code asset.
+# Compilation from Source
+```
+git clone https://github.com/milorad-co/maia
+cd maia
+cargo build
+```

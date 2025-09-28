@@ -33,3 +33,4 @@ git clone https://github.com/milorad-co/maia
 cd maia
 cargo build
 ```
+Then the file will be in the `target/debug` directory.

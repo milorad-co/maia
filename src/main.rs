@@ -4,13 +4,36 @@ use std::fs::File;
 use std::env;
 use std::process;
 use std::process::Command;
-use std::io::{copy, Write};
-use std::io::prelude::*;
+use std::io::{copy, Write, Read, self};
 use std::path::Path;
 // additional dependencies
 use reqwest::blocking;
 use colored::Colorize;
+use flate2::read::GzDecoder;
+use xz::read::XzDecoder;
+use tar::Archive;
+use zip::ZipArchive;
 
+fn extract_zip(input: &str, output: &str) -> io::Result<()> {
+    let file = File::open(format!("/usr/bin/{}", input))?;
+    let mut archive = ZipArchive::new(file)?;
+    let target_dir = format!("/usr/bin/{}", output);
+    archive.extract(target_dir)?;
+    Ok(())
+}
+fn extract_gz(path: &str) -> Result<(), std::io::Error> {
+    let tar_gz = File::open(path)?;
+    let tar = GzDecoder::new(tar_gz);
+    let mut archive = Archive::new(tar);
+    archive.unpack("/usr/bin/")?;
+    Ok(())
+}
+fn extract_xz(input: &str, output: &str) {
+    let tar_xz = File::open(input).unwrap();
+    let tar = XzDecoder::new(tar_xz);
+    let mut archive = Archive::new(tar);
+    archive.unpack(output).unwrap();
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = "/etc/maia/";
     let install = "/usr/bin/";
@@ -30,14 +53,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}: No application specified", "Error".yellow().bold());
             process::exit(3);
         }
-        let repo: Vec<&str> = args[2].split("/").collect();
-        if repo.len() < 2 {
-            println!("{}: Please specify a repository (e.g. 'sudo maia install {}/REPONAME')", "Error".yellow().bold(), args[2]);
-            process::exit(3);
-        }
+        let mut repo: Vec<&str> = args[2].split("/").collect();
         print!("Preparing to install {} ... ", args[2]);
         std::io::stdout().flush().unwrap();
-        let install = args[2].to_lowercase();
+        let mut install = args[2].to_lowercase();
+        if repo.len() < 2 {
+            install = format!("milorad-co/{}", install);
+            repo.push(repo[0]);
+            repo[0] = "milorad-co";
+        }
         let url = format!("https://api.github.com/repos/{}/releases/latest", &install);
         fs::create_dir_all(format!("{}{}", config, repo[0].to_lowercase()))?;
         // get data
@@ -59,6 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let pathstr = format!("/usr/bin/{}", truename);
                 let path = Path::new(&pathstr);
                 if path.exists() {
+                    println!("{:?}", path);
                     println!("{}: {} is already installed (did you mean 'sudo maia override {}')", "Faliure".red().bold(), args[2], args[2]);
                     process::exit(3);
                 }
@@ -101,15 +126,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let content = response.bytes()?;
                 copy(&mut content.as_ref(), &mut dest).unwrap();
                 println!("{}", "Success".green().bold());
-                print!("Updating configuration ... ");
-                std::io::stdout().flush().unwrap();
-                file.write_all(format!("{}\n", truename).as_bytes())?;
-                Command::new("chmod")
-                    .arg("a+x")
-                    .arg(&format!("/usr/bin/{}", truename))
-                    .spawn()
-                    .expect(&"Faliure".red().bold());
-                println!("{}", "Success".green().bold());
+                if splitname.len() > 1 && (splitname[splitname.len() - 1] == "tar" || splitname[splitname.len() - 1] == "gz" || splitname[splitname.len() - 1] == "xz") {
+                    print!("Archive detected. Extracting ... ");
+                    std::io::stdout().flush().unwrap();
+                    Command::new("tar")
+                        .arg("-xf")
+                        .arg(&format!("/usr/bin/{}", truename))
+                        .arg("-C")
+                        .arg("/usr/bin/")
+                        .spawn()
+                        .expect(&"Faliure".red().bold());
+                    println!("{}", "Success".green().bold());
+                    print!("Updating configuration ... ");
+                    let tarraw = Command::new("tar")
+                        .arg("-tf")
+                        .arg(&format!("/usr/bin/{}", truename))
+                        .output()
+                        .expect(&"Faliure".red().bold());
+                    let tardata = String::from_utf8(tarraw.stdout).expect(&"Faliure".red().bold());
+                    let tarparts: Vec<&str> = tardata.split("\n").collect();
+                    for tarpart in tarparts {
+                        file.write_all(format!("{}\n", tarpart).as_bytes())?;
+                    }
+                    println!("{}", "Success".green().bold());
+                } else {
+                    print!("Updating configuration ... ");
+                    std::io::stdout().flush().unwrap();
+                    file.write_all(format!("{}\n", truename).as_bytes())?;
+                    Command::new("chmod")
+                        .arg("a+x")
+                        .arg(&format!("/usr/bin/{}", truename))
+                        .spawn()
+                        .expect(&"Faliure".red().bold());
+                    println!("{}", "Success".green().bold());
+                }
             }
         }
     }
@@ -120,7 +170,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         print!("Getting {}'s file list ... ", args[2]);
         std::io::stdout().flush().unwrap();
-        let remove = args[2].to_lowercase();
+        let repo: Vec<&str> = args[2].split("/").collect();
+        let mut remove = args[2].to_lowercase();
+        if repo.len() < 2 {
+            remove = format!("milorad-co/{}", remove);
+        }
         let pathstr = format!("{}{}", config, remove);
         let path = Path::new(&pathstr);
         if path.exists() {
@@ -150,14 +204,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}: No application specified", "Error".yellow().bold());
             process::exit(3);
         }
-        let repo: Vec<&str> = args[2].split("/").collect();
-        if repo.len() < 2 {
-            println!("{}: Please specify a repository (e.g. 'sudo maia install {}/REPONAME')", "Error".yellow().bold(), args[2]);
-            process::exit(3);
-        }
+        let mut repo: Vec<&str> = args[2].split("/").collect();
         print!("Preparing to install {} ... ", args[2]);
         std::io::stdout().flush().unwrap();
-        let over = args[2].to_lowercase();
+        let mut over = args[2].to_lowercase();
+        if repo.len() < 2 {
+            over = format!("milorad-co/{}", over);
+            repo.push(repo[0]);
+            repo[0] = "milorad-co";
+        }
         let url = format!("https://api.github.com/repos/{}/releases/latest", &over);
         fs::create_dir_all(format!("{}{}", config, repo[0]))?;
         // get data
@@ -189,15 +244,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let content = response.bytes()?;
                 copy(&mut content.as_ref(), &mut dest).unwrap();
                 println!("{}", "Success".green().bold());
-                print!("Updating configuration ... ");
-                std::io::stdout().flush().unwrap();
-                file.write_all(format!("{}\n", truename).as_bytes())?;
-                Command::new("chmod")
+                if splitname.len() > 1 && (splitname[splitname.len() - 1] == "tar" || splitname[splitname.len() - 1] == "gz" || splitname[splitname.len() - 1] == "xz") {
+                    print!("Archive detected. Extracting ... ");
+                    std::io::stdout().flush().unwrap();
+                    Command::new("tar")
+                    .arg("-xf")
+                    .arg(&format!("/usr/bin/{}", truename))
+                    .arg("-C")
+                    .arg("/usr/bin/")
+                    .spawn()
+                    .expect(&"Faliure".red().bold());
+                    println!("{}", "Success".green().bold());
+                    print!("Updating configuration ... ");
+                    let tarraw = Command::new("tar")
+                    .arg("-tf")
+                    .arg(&format!("/usr/bin/{}", truename))
+                    .output()
+                    .expect(&"Faliure".red().bold());
+                    let tardata = String::from_utf8(tarraw.stdout).expect(&"Faliure".red().bold());
+                    let tarparts: Vec<&str> = tardata.split("\n").collect();
+                    for tarpart in tarparts {
+                        file.write_all(format!("{}\n", tarpart).as_bytes())?;
+                    }
+                    println!("{}", "Success".green().bold());
+                } else {
+                    print!("Updating configuration ... ");
+                    std::io::stdout().flush().unwrap();
+                    file.write_all(format!("{}\n", truename).as_bytes())?;
+                    Command::new("chmod")
                     .arg("a+x")
                     .arg(&format!("/usr/bin/{}", truename))
                     .spawn()
                     .expect(&"Faliure".red().bold());
-                println!("{}", "Success".green().bold());
+                    println!("{}", "Success".green().bold());
+                }
             }
             if part.contains("message") {
                 if part.contains("Not Found") {

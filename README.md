@@ -15,11 +15,11 @@ Syntax: `maia <subcommand> <arguments>`<br>
 `remove`      remove an application (requires root priveleges)<br>
 `override`    same as install, but does not throw an error if it has to overwrite files, can be used to update applications (requires root priveleges)<br>
 `help`        show help information, or show more detailed information about a specific subcommand
-## install and override
+### install and override
 Syntax: `sudo maia <install or override> <account name>/<repository name>`<br>
 The install subcommand is used to install applications. To specify the application to install, you must enter the name of the account which owns the repository, followed by a forward slash (/), followed by the name of the repository. For example, you could run `sudo maia install milorad-co/mica` to install MICA, our image editor, or you could run `sudo maia install fish-shell/fish-shell` to install Fish, the Friendly Interactive Shell. Please note that to install an application, the targeted repository must have at least one release and its latest release must have at least one asset that is not source code. The install subcommand will fail if it tries to overwrite files.<br>
 The override subcommand is similar to install, except it will not fail if forced to overwrite files. It can be used to update applications, as it will install the latest release and overwrite outdated files.
-## remove
+### remove
 Syntax: `sudo maia remove <account name>/<repository name>`<br>
 Remove removes applications and any configuration data that MAIA created for them. Note that some data may remain, such as extremely out of date files whose references were removed during an override.
 # Limitations
@@ -34,3 +34,5 @@ cd maia
 cargo build
 ```
 Then the file will be in the `maia/target/debug` directory.
+# Issues
+MAIA has some trouble removing certain applications that were installed with the archive extraction tools.

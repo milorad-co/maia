@@ -23,10 +23,9 @@ The override subcommand is similar to install, except it will not fail if forced
 Syntax: `sudo maia remove <account name>/<repository name>`<br>
 Remove removes applications and any configuration data that MAIA created for them. Note that some data may remain, such as extremely out of date files whose references were removed during an override.
 # Limitations
-1. MAIA cannot extract archives. We are going to fix this soon, but for now, all repositories with these files are not installable.
-2. MAIA requires for the repository to have at least one release.
-3. The repository must have a release marked as latest.
-4. The latest release must have at least one non-source-code asset.
+1. MAIA requires for the repository to have at least one release.
+2. The repository must have a release marked as latest.
+3. The latest release must have at least one non-source-code asset.
 # Compilation from Source
 ```
 git clone https://github.com/milorad-co/maia

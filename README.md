@@ -1,6 +1,6 @@
 # Milorad Automated Installation Application
 MAIA is commandline installation application with a similar syntax to Apt. It is designed to install applications from GitHub, the world's largest open-source file sharing website. It can download executable files from the releases of any github repository*!<br>
-<small>*Excluding repositories in the [Limitations section](https://github.com/milorad-co/maia#Limitations).</small>
+<sub>*Excluding repositories in the [Limitations section](https://github.com/milorad-co/maia#Limitations).</sub>
 # How to Install
 Note that MAIA is compatible only with Debian-based GNU/Linux.
 1. Install cURL with `sudo apt install curl`.
